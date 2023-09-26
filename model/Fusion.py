@@ -23,35 +23,29 @@ class FusionModel(nn.Module):
         self.device = opt.device
         # load/define networks
         num_in = opt.input_nc + opt.output_nc + 1
-
         self.visual_names = []
         self.blocks = opt.blocks
-
         self.netG = HRA_INST( blocks=opt.blocks).to(opt.device)
         self.netG = self.netG.cuda()
         device_ids = [0, 1] 
         self.netG = torch.nn.DataParallel(self.netG)
         cudnn.benchmark = True
         self.netG.eval()
-
         self.netGF = HRA_Fusion( blocks=opt.blocks).to(opt.device)
         self.netGF = self.netGF.cuda()
         self.netGF = torch.nn.DataParallel(self.netGF)
         self.netGF.eval()
-
         self.optimizer_G = torch.optim.Adam(
             params=filter(lambda x: x.requires_grad, self.netGF.parameters()),
             lr=opt.lr,
             betas=(0.9, 0.999),
             eps=1e-08)
-
         self.optimizers.append(self.optimizer_G)
         self.avg_losses = OrderedDict()
         self.avg_loss_alpha = opt.avg_loss_alpha
         self.error_cnt = 0
         for loss_name in self.loss_names:
             self.avg_losses[loss_name] = 0
-
         self.transforms = tfs.Compose([
             tfs.Resize((opt.fineSize, opt.fineSize), interpolation=2),
             tfs.ToTensor(),
