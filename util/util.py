@@ -7,8 +7,7 @@ from collections import OrderedDict
 from IPython import embed
 import cv2
 
-# Converts a Tensor into an image array (numpy)
-# |imtype|: the desired type of the converted numpy array
+
 def tensor2im(input_image, imtype=np.uint8):
     if isinstance(input_image, torch.Tensor):
         image_tensor = input_image.data
@@ -73,11 +72,7 @@ def get_subset_dict(in_dict,keys):
 
 
 
-# Color conversion code
 def rgb2xyz(rgb): # rgb from [0,1]
-    # xyz_from_rgb = np.array([[0.412453, 0.357580, 0.180423],
-        # [0.212671, 0.715160, 0.072169],
-        # [0.019334, 0.119193, 0.950227]])
 
     mask = (rgb > .04045).type(torch.FloatTensor)
     if(rgb.is_cuda):
@@ -96,10 +91,6 @@ def rgb2xyz(rgb): # rgb from [0,1]
     return out
 
 def xyz2rgb(xyz):
-    # array([[ 3.24048134, -1.53715152, -0.49853633],
-    #        [-0.96925495,  1.87599   ,  0.04155593],
-    #        [ 0.05564664, -0.20404134,  1.05731107]])
-
     r = 3.24048134*xyz[:,0,:,:]-1.53715152*xyz[:,1,:,:]-0.49853633*xyz[:,2,:,:]
     g = -0.96925495*xyz[:,0,:,:]+1.87599*xyz[:,1,:,:]+.04155593*xyz[:,2,:,:]
     b = .05564664*xyz[:,0,:,:]-.20404134*xyz[:,1,:,:]+1.05731107*xyz[:,2,:,:]
@@ -119,7 +110,6 @@ def xyz2rgb(xyz):
     return rgb
 
 def xyz2lab(xyz):
-    # 0.95047, 1., 1.08883 # white
     sc = torch.Tensor((0.95047, 1., 1.08883))[None,:,None,None]
     if(xyz.is_cuda):
         sc = sc.cuda()
@@ -172,9 +162,7 @@ def lab2xyz(lab):
 
 def rgb2lab(rgb, opt):
     lab = xyz2lab(rgb2xyz(rgb))
-    # print(lab[0, 0, 0, 0])
     l_rs = (lab[:,[0],:,:]-opt.l_cent)/opt.l_norm
-    # print(l_rs[0, 0, 0, 0])
     ab_rs = lab[:,1:,:,:]/opt.ab_norm
     out = torch.cat((l_rs,ab_rs),dim=1)
     # if(torch.sum(torch.isnan(out))>0):
@@ -210,13 +198,6 @@ def get_colorization_data(data_raw, opt, ab_thresh=5., p=.125, num_points=None):
     return add_color_patches_rand_gt(data, opt, p=p, num_points=num_points)
 
 def add_color_patches_rand_gt(data,opt,p=.125,num_points=None,use_avg=True,samp='normal'):
-# Add random color points sampled from ground truth based on:
-#   Number of points
-#   - if num_points is 0, then sample from geometric distribution, drawn from probability p
-#   - if num_points > 0, then sample that number of points
-#   Location of points
-#   - if samp is 'normal', draw from N(0.5, 0.25) of image
-#   - otherwise, draw from U[0, 1] of image
     N,C,H,W = data['B'].shape
 
     data['hint_B'] = torch.zeros_like(data['B'])
@@ -341,14 +322,3 @@ def decode_mean(data_ab_quant, opt):
     data_ab_inf = torch.cat((data_a_inf,data_b_inf),dim=1)/opt.ab_norm
 
     return data_ab_inf
-
-def calculate_psnr_np(img1, img2):
-    import numpy as np
-    SE_map = (1.*img1-img2)**2
-    cur_MSE = np.mean(SE_map)
-    return 20*np.log10(255./np.sqrt(cur_MSE))
-
-def calculate_psnr_torch(img1, img2):
-    SE_map = (1.*img1-img2)**2
-    cur_MSE = torch.mean(SE_map)
-    return 20*torch.log10(1./torch.sqrt(cur_MSE))
