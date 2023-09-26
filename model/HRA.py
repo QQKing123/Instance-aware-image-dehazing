@@ -324,7 +324,7 @@ class GFF_subnet(nn.Module):
         out = self.normalize(out)
         out = torch.sum(out, 0, keepdim=True)
 	out = self.post(out)
-        return out  # , instance_mask, torch.clamp(mask_list, 0.0, 1.0)
+        return out  
 
 
 if __name__ == "__main__":
