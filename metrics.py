@@ -9,7 +9,7 @@ from torch.autograd import Variable
 from math import exp
 import math
 import torch
-from torch.autograd import Variable #torch中的variable模块
+from torch.autograd import Variable 
 from  torchvision.transforms import ToPILImage
 
 def gaussian(window_size, sigma): ##SSIM
