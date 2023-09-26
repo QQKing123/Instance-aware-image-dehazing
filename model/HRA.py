@@ -222,11 +222,11 @@ class HRA_Fusion(nn.Module):
         self.downS1 = downS(self.dim, 3)
         self.downS2 = downS(self.dim * 2, 3)
         self.upS1 = upS(self.dim * 4, 1)
-        self.weight_layer3 = WeightGenerator(2 * self.dim)
+        self.weight_layer3 = GFF_subnet(2 * self.dim)
 
         self.upS2 = upS(self.dim * 2, 1)
         self.h1 = HRA_Module(conv, self.dim, kernel_size, blocks=blocks)
-        self.weight_layer2 = WeightGenerator(self.dim)
+        self.weight_layer2 = GFF_subnet(self.dim)
 
         # self.g2= Group(conv, self.dim, kernel_size,blocks=blocks)
         self.h2 = HRA_Module(conv, self.dim * 2, kernel_size, blocks=blocks)
@@ -234,7 +234,7 @@ class HRA_Fusion(nn.Module):
         self.h3 = HRA_Module(conv, self.dim * 4, kernel_size, blocks=blocks)
         # self.g4= Group(conv, self.dim, kernel_size, blocks=blocks)
         self.h4 = HRA_Module(conv, self.dim * 2, kernel_size, blocks=blocks)
-        self.weight_layer4 = WeightGenerator(2 * self.dim)
+        self.weight_layer4 = GFF_subnet(2 * self.dim)
 
         # self.g5 = Group(conv, self.dim, kernel_size, blocks=blocks)
         self.h5 = HRA_Module(conv, self.dim, kernel_size, blocks=blocks)
@@ -243,9 +243,9 @@ class HRA_Fusion(nn.Module):
             conv(self.dim, self.dim, kernel_size),
             conv(self.dim, 3, kernel_size)]
         self.pre = nn.Sequential(*pre_process)
-        self.weight_layer1 = WeightGenerator(self.dim)
+        self.weight_layer1 = GFF_subnet(self.dim)
         self.post = nn.Sequential(*post_precess)
-        self.weight_layer5 = WeightGenerator(3)
+        self.weight_layer5 = GFF_subnet(3)
 
     def forward(self, x1, instance_feature, box_info_list):
          x = self.pre(x1)
@@ -281,9 +281,9 @@ class HRA_Fusion(nn.Module):
 
          return x + x1
 
-class WeightGenerator(nn.Module):
+class GFF_subnet(nn.Module):
     def __init__(self, input_ch, inner_ch=16):
-        super(WeightGenerator, self).__init__()
+        super(GFF_subnet, self).__init__()
         self.simple_instance_conv = nn.Sequential(
             nn.Conv2d(input_ch, inner_ch, kernel_size=3, stride=1, padding=1),
             nn.ReLU(True),
