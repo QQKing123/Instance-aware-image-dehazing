@@ -84,30 +84,23 @@ class DCF(nn.Module):
          self.dim=dim
          self.mean = nn.AdaptiveAvgPool2d((1, 1))
          self.conv = nn.Conv2d(in_channel, depth, 1, 1)
-          # k=1 s=1 no pad
-         self.atrous_block1 = nn.Conv2d(in_channel, depth, 1, 1)
-         self.atrous_block6 = nn.Conv2d(in_channel, depth, 3, 1, padding=6, dilation=6)
-         self.atrous_block12 = nn.Conv2d(in_channel, depth, 3, 1, padding=12, dilation=12)
-         self.atrous_block18 = nn.Conv2d(in_channel, depth, 3, 1, padding=18, dilation=18)
+         self.dilated_block1 = nn.Conv2d(in_channel, depth, 1, 1)
+         self.dilated_block6 = nn.Conv2d(in_channel, depth, 3, 1, padding=6, dilation=6)
+         self.dilated_block12 = nn.Conv2d(in_channel, depth, 3, 1, padding=12, dilation=12)
+         self.dilated_block18 = nn.Conv2d(in_channel, depth, 3, 1, padding=18, dilation=18)
          self.conv_1x1_output = nn.Conv2d(depth * 5, depth, 1, 1)
          self.salayer = SALayer(self.dim)
      def forward(self, x):
           size = x.shape[2:]
-
           image_features = self.mean(x)
           image_features = self.conv(image_features)
           image_features = F.upsample(image_features, size=size, mode='bilinear')
-
-          atrous_block1 = self.atrous_block1(x)
-
-          atrous_block6 = self.atrous_block6(x)
-
-          atrous_block12 = self.atrous_block12(x)
-
-          atrous_block18 = self.atrous_block18(x)
-
-          net = self.conv_1x1_output(torch.cat([image_features, atrous_block1, atrous_block6,
-                                                          atrous_block12, atrous_block18], dim=1))
+          dilated_block1 = self.dilated_block1(x)
+          dilated_block6 = self.dilated_block6(x)
+          dilated_block12 = self.dilated_block12(x)
+          dilated_block18 = self.dilated_block18(x)
+          net = self.conv_1x1_output(torch.cat([image_features, dilated_block1, dilated_block6,
+                                                          dilated_block12, dilated_block18], dim=1))
           net=self.salayer(net)
           return net
 class HRA_Module(nn.Module):
@@ -142,6 +135,7 @@ class HRA(nn.Module):
             conv(self.dim, 3, kernel_size)]
         self.pre = nn.Sequential(*pre_process)
         self.post = nn.Sequential(*post_precess)
+	    
     def forward(self, x1):
         x = self.pre(x1)
         res1=self.h1(x)# h w c
@@ -158,6 +152,7 @@ class HRA(nn.Module):
         x = self.DCF(res6)
         x = self.post(x)
         return x + x1
+	    
 class HRA_INST(nn.Module):
     def __init__(self, blocks, conv=default_conv):
         super(HRA_INST, self).__init__()
@@ -183,20 +178,14 @@ class HRA_INST(nn.Module):
 
     def forward(self, x1):
         feature_map = {}
-
         x = self.pre(x1)
         feature_map['x'] = x
-
-
         res1 = self.h11(x)  # h w c
         Res1 = res1
         feature_map['res1'] = res1
-
-
         res1 = self.downS1(res1)  # h/2 w/2 2c
         res2 = self.h2(res1)  # h/2 w/2 2c
         Res2 = res2
-
         res2 = self.downS2(res2)  # h/4 w/4 4c
         res3 = self.h3(res2)  # h/4 w/4 4c
         # print("1",res3.size())
@@ -213,6 +202,7 @@ class HRA_INST(nn.Module):
         x = self.post(out)
         feature_map['x2'] = x
         return x + x1,feature_map
+	    
 class HRA_Fusion(nn.Module):
     def __init__(self, blocks, conv=default_conv):
         super(HRA_Fusion, self).__init__()
@@ -223,20 +213,13 @@ class HRA_Fusion(nn.Module):
         self.downS2 = downS(self.dim * 2, 3)
         self.upS1 = upS(self.dim * 4, 1)
         self.weight_layer3 = GFF_subnet(2 * self.dim)
-
         self.upS2 = upS(self.dim * 2, 1)
         self.h1 = HRA_Module(conv, self.dim, kernel_size, blocks=blocks)
         self.weight_layer2 = GFF_subnet(self.dim)
-
-        # self.g2= Group(conv, self.dim, kernel_size,blocks=blocks)
         self.h2 = HRA_Module(conv, self.dim * 2, kernel_size, blocks=blocks)
-        # self.g3= Group(conv, self.dim, kernel_size,blocks=blocks)
         self.h3 = HRA_Module(conv, self.dim * 4, kernel_size, blocks=blocks)
-        # self.g4= Group(conv, self.dim, kernel_size, blocks=blocks)
         self.h4 = HRA_Module(conv, self.dim * 2, kernel_size, blocks=blocks)
         self.weight_layer4 = GFF_subnet(2 * self.dim)
-
-        # self.g5 = Group(conv, self.dim, kernel_size, blocks=blocks)
         self.h5 = HRA_Module(conv, self.dim, kernel_size, blocks=blocks)
         self.DCF= DCF(dim=self.dim,in_channel=self.dim, depth=self.dim)
         post_precess = [
@@ -252,28 +235,19 @@ class HRA_Fusion(nn.Module):
          x = self.weight_layer1(instance_feature['x'], x, box_info_list[0])
          res1 = self.h1(x)  # h w c
          res1 = self.weight_layer2(instance_feature['res1'], res1, box_info_list[0])
-
          Res1 = res1
-
          res1 = self.downS1(res1)  # h/2 w/2 2c
          res2 = self.h2(res1)  # h/2 w/2 2c
          Res2 = res2
-
          res2 = self.downS2(res2)  # h/4 w/4 4c
          res3 = self.h3(res2)  # h/4 w/4 4c
-         # print("1",res3.size())
          res3 = self.upS1(res3)  # h/2 w/2 2c
-         # print("2",res3.size())
          res3 = self.weight_layer3(instance_feature['res2'], res3, box_info_list[1])
-
          res4 = self.h4(res3)  # h/2 w/2 2c
          res4 = self.weight_layer4(instance_feature['res3'], res4, box_info_list[1])
-
          res4 = res4 + Res2
          res4 = self.upS2(res4)  # h w c
-
          res5 = self.h5(res4)  # h w c
-
          res6 = res5 + Res1
          out = self.DCF(res6)
          x = self.post(out)
