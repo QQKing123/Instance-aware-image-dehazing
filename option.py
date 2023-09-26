@@ -2,8 +2,8 @@ import os,argparse
 import torch,warnings
 warnings.filterwarnings('ignore')
 parser=argparse.ArgumentParser()
+# full-image & instance
 parser.add_argument('--steps',type=int,default=50000)
-# parser.add_argument('--device',type=str,default='Automatic detection')
 parser.add_argument('--device',type=str,default='cuda')
 parser.add_argument('--resume',type=bool,default=True)
 parser.add_argument('--eval_step',type=int,default=5000)
