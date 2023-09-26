@@ -29,7 +29,7 @@ class FusionModel(nn.Module):
 
         self.netG = HRA_INST( blocks=opt.blocks).to(opt.device)
         self.netG = self.netG.cuda()
-        device_ids = [0, 1]  # id为0和1的两块显卡
+        device_ids = [0, 1] 
         self.netG = torch.nn.DataParallel(self.netG)
         cudnn.benchmark = True
         self.netG.eval()
@@ -61,16 +61,15 @@ class FusionModel(nn.Module):
         if self.isTrain:
             self.schedulers = [self.get_scheduler(optimizer, opt) for optimizer in self.optimizers]
 
-
-        # 1、加载实例模型的权重
-        load_path = "加载实例模型的权重地址"
+        # 1、Load weight path of the Full-image model
+        load_path = "The weight path of the instance model"
         state_dict = torch.load(load_path, map_location=str(opt.device))
         if hasattr(state_dict, '_metadata'):
             del state_dict._metadata
-
         self.netG.load_state_dict(state_dict, strict=False)
-        # 2、加载全图模型的权重
-        load_path = "加载全图模型的权重地址"
+        
+        # 2、Load weight path of the Full-image model
+        load_path = "The weight path of the Full-image model "
         state_dict = torch.load(load_path, map_location=str(opt.device))
         self.netGF.load_state_dict(state_dict, strict=False)
 
