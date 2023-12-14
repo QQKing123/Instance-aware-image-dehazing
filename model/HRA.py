@@ -272,7 +272,7 @@ class GFF_subnet(nn.Module):
             nn.Sigmoid()
         )
 	self.post =  nn.Sequential(
-            nn.Conv2d(inner_ch, inner_ch, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(input_ch, input_ch, kernel_size=3, stride=1, padding=1),
             nn.Sigmoid()
         )
         self.normalize = nn.Softmax(1)
